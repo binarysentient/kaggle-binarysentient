@@ -54,14 +54,17 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         book_df = pd.read_parquet(os.path.join(data_directory, f"book_{mode}.parquet", f"stock_id={main_stock_id}"))
 #         trade_df = pd.read_parquet(os.path.join(data_directory, f"trade_{mode}.parquet", f"stock_id={main_stock_id}"))
         book_df['wap1'] = (book_df['bid_price1'] * book_df['ask_size1'] + book_df['ask_price1'] * book_df['bid_size1'])/(book_df['bid_size1'] + book_df['ask_size1'])
-        book_df['directional_volume1'] = book_df['bid_size1'] - book_df['ask_size1']
+        book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
+#         book_df['directional_volume1'] = book_df['bid_size1'] - book_df['ask_size1']
 #             book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
         #NOTE: use wap1 ; until we figure out in 01. study which price wap1 closely resembles the trade price, or maybe wap1&wap2 mean
-        book_df['log_return'] = book_df.groupby('time_id')['wap1'].apply(lambda x: np.log(x).diff())
+        book_df['log_return1'] = book_df.groupby('time_id')['wap1'].apply(lambda x: np.log(x).diff())
+        book_df['log_return2'] = book_df.groupby('time_id')['wap2'].apply(lambda x: np.log(x).diff())
 #         trade_df['log_return'] = book_df.groupby('time_id')['wap1'].apply(lambda x: np.log(x).diff())
 
 #         book_df['seconds_in_bucket_120s_groupkey'] = (book_df['seconds_in_bucket']/120).astype(int)
-        book_df['seconds_in_bucket_2s_groupkey'] = (book_df['seconds_in_bucket']/2).astype(int)
+#         book_df['seconds_in_bucket_2s_groupkey'] = (book_df['seconds_in_bucket']/2).astype(int)
+        book_df['seconds_in_bucket_1s_groupkey'] = (book_df['seconds_in_bucket']/1).astype(int)
 #         trade_df['seconds_in_bucket_30s_groupkey'] = (trade_df['seconds_in_bucket']/30).astype(int)
 
 #                 print(book_df)
@@ -72,13 +75,16 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             if rowid not in feature_map:
                 feature_map[rowid] = {}
                 
-            feature_map[rowid]['book_realized_volatility'] = generate_realized_volatility_df(groupdf)
+#             feature_map[rowid]['book_realized_volatility'] = generate_realized_volatility_df(groupdf)
             
-            book_wap1_2s = generate_interval_features(groupdf, 'wap1', 'seconds_in_bucket_2s_groupkey', 600/2)
+#             book_wap1_2s = generate_interval_features(groupdf, 'wap1', 'seconds_in_bucket_2s_groupkey', 600/2)
+            book_wap1_1s = generate_interval_features(groupdf, 'wap1', 'seconds_in_bucket_1s_groupkey', 600/1)
+            book_wap2_1s = generate_interval_features(groupdf, 'wap2', 'seconds_in_bucket_1s_groupkey', 600/1)
 #             feature_map[rowid]['book_wap1_2s'] = book_wap1_2s
 #             feature_map[rowid]['log_return1_1s'] = generate_interval_features(groupdf, 'log_return', 'seconds_in_bucket_1s_groupkey', 600/1, function='sum')
-            feature_map[rowid]['log_return1_2s'] = np.log(pd.Series(book_wap1_2s)).diff().fillna(method='bfill').tolist()
-            feature_map[rowid]['book_directional_volume1_2s'] = generate_interval_features(groupdf, 'directional_volume1', 'seconds_in_bucket_2s_groupkey', 600/2)
+            feature_map[rowid]['log_return1_1s'] = np.log(pd.Series(book_wap1_1s)).diff().fillna(method='bfill').tolist()
+            feature_map[rowid]['log_return2_1s'] = np.log(pd.Series(book_wap2_1s)).diff().fillna(method='bfill').tolist()
+#             feature_map[rowid]['book_directional_volume1_1s'] = generate_interval_features(groupdf, 'directional_volume1', 'seconds_in_bucket_1s_groupkey', 600/1)
 #             feature_map[rowid]['book_wap1_30s_interval'] = generate_interval_features(groupdf, 'wap1', 'seconds_in_bucket_30s_groupkey', 600/30, function='mean')
 #             feature_map[rowid]['book_directional_volume1_30s_interval'] = generate_interval_features(groupdf, 'directional_volume1', 'seconds_in_bucket_30s_groupkey', 600/30, function='mean')
             
