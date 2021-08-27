@@ -100,14 +100,23 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
 #                 print(book_df)
         # ACTUAL FEATURES HERE!
         for groupkey, groupdf in trade_df.groupby('time_id'):
+            
             rowid = get_row_id(main_stock_id, groupkey)
             if rowid not in feature_map:
                 feature_map[rowid] = {}
             grouped_interval_df = generate_interval_group_features(groupdf[['price','size','order_count','seconds_in_bucket_xs_groupkey']], 'seconds_in_bucket_xs_groupkey', intervals_count, 
                                              function={'price':'mean','size':'sum','order_count':'sum'}, column_fill_map={'size':'zero','order_count':'zero'})
-            feature_map[rowid]['logrett_xs'] = np.log(grouped_interval_df['price']).diff().fillna(method='bfill').tolist()
+            #NOTE: double fillna is important! when whole series is na then 'bfill' won't work
+            feature_map[rowid]['logrett_xs'] = np.log(grouped_interval_df['price']).diff().fillna(method='bfill').fillna(0).tolist()
             feature_map[rowid]['trade_volume_xs'] = grouped_interval_df['size'].tolist()
             feature_map[rowid]['trade_ordercount_xs'] = grouped_interval_df['order_count'].tolist()
+            
+            if groupkey == 20336:
+                print("HERE!@!!")
+                print(groupdf)
+                input()
+                print(feature_map[rowid])
+                input()
             
         for groupkey, groupdf in book_df.groupby('time_id'):
             rowid = get_row_id(main_stock_id, groupkey)
@@ -128,8 +137,9 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
 #             askp2_1s = generate_interval_features(groupdf, 'ask_price2', 'seconds_in_bucket_1s_groupkey', 600/1)
 #             [rowid]['book_wap1_2s'] = book_wap1_2s
 #             feature_map[rowid]['log_return1_1s'] = generate_interval_features(groupdf, 'log_return', 'seconds_in_bucket_1s_groupkey', 600/1, function='sum')
-            feature_map[rowid]['logret1_xs'] = np.log(grouped_interval_df['wap1']).diff().fillna(method='bfill').tolist()
-            feature_map[rowid]['logret2_xs'] = np.log(grouped_interval_df['wap2']).diff().fillna(method='bfill').tolist()
+            #NOTE: double fillna is important! when whole series is na then 'bfill' won't work
+            feature_map[rowid]['logret1_xs'] = np.log(grouped_interval_df['wap1']).diff().fillna(method='bfill').fillna(0).tolist()
+            feature_map[rowid]['logret2_xs'] = np.log(grouped_interval_df['wap2']).diff().fillna(method='bfill').fillna(0).tolist()
             feature_map[rowid]['book_dirvolume_xs'] = grouped_interval_df['directional_volume1'].tolist()
             
 
@@ -146,9 +156,11 @@ if __name__ == "__main__":
     if os.path.exists(DATA_DIRECTORY):
 
         traindf = pd.read_csv(os.path.join(DATA_DIRECTORY,'train.csv'))
-        traindf = traindf[traindf['stock_id']==18]
+        traindf = traindf[traindf['stock_id']==31]
         totalfeatures = {}
         for stock_id in range(125):
+            if stock_id != 31:
+                continue
             import time
             stime = time.time()
             features_dict = get_features_map_for_stock(DATA_DIRECTORY, "train", stock_id)
