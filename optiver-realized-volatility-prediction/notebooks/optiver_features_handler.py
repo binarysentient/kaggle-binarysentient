@@ -44,9 +44,7 @@ def generate_interval_group_features(source_df, interval_key, intervals, functio
             aggdf[key] = aggdf[key].fillna(0)
         else:
             aggdf[key] = aggdf[key].interpolate(method='linear', limit_direction='both')
-            
-#     print(aggdf)
-#     input()
+
     return aggdf
 
 def generate_interval_features_ohlc(source_df, source_key, interval_key, intervals):
@@ -78,7 +76,13 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         trade_df = pd.read_parquet(os.path.join(data_directory, f"trade_{mode}.parquet", f"stock_id={main_stock_id}"))
         book_df['wap1'] = (book_df['bid_price1'] * book_df['ask_size1'] + book_df['ask_price1'] * book_df['bid_size1'])/(book_df['bid_size1'] + book_df['ask_size1'])
         book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
-        book_df['directional_volume1'] = book_df['bid_size1'] - book_df['ask_size1'] + book_df['bid_size2'] - book_df['ask_size2']
+        book_df['wap_1n2'] = (book_df['wap1'] + book_df['wap2'])/2
+        book_df['directional_volume1'] = book_df['ask_size1'] - book_df['bid_size1']
+        book_df['directional_volume2'] = book_df['ask_size2'] - book_df['bid_size2']
+        book_df['price_spread1'] = (book_df['ask_price1'] - book_df['bid_price1']) / (book_df['ask_price1'] + book_df['bid_price1'])
+        book_df['price_spread2'] = (book_df['ask_price2'] - book_df['bid_price2']) / (book_df['ask_price2'] + book_df['bid_price2'])
+        book_df['total_volume'] = book_df['ask_size1'] + book_df['bid_size1'] + book_df['ask_size2'] + book_df['bid_size2']
+        book_df['volume_imbalance'] = abs(book_df['ask_size1'] - book_df['bid_size1'] + book_df['ask_size2'] - book_df['bid_size2'])
 #             book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
         #NOTE: use wap1 ; until we figure out in 01. study which price wap1 closely resembles the trade price, or maybe wap1&wap2 mean
 #         book_df['log_return1'] = book_df.groupby('time_id')['wap1'].apply(lambda x: np.log(x).diff())
@@ -111,12 +115,20 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             feature_map[rowid]['trade_volume_xs'] = grouped_interval_df['size'].tolist()
             feature_map[rowid]['trade_ordercount_xs'] = grouped_interval_df['order_count'].tolist()
             
-            if groupkey == 20336:
-                print("HERE!@!!")
-                print(groupdf)
-                input()
-                print(feature_map[rowid])
-                input()
+            feature_map[rowid]['trade_price_min'] = grouped_interval_df['price'].min()
+            feature_map[rowid]['trade_price_mean'] = grouped_interval_df['price'].mean()
+            feature_map[rowid]['trade_price_max'] = grouped_interval_df['price'].max()
+            
+            
+            
+            trade_turnover = (grouped_interval_df['size'] * grouped_interval_df['order_count'] * grouped_interval_df['price'])
+            #trade turnover per unit of interval
+            feature_map[rowid]['trade_money_turnover_mean'] = trade_turnover.mean()
+#             feature_map[rowid]['trade_price_max'] = grouped_interval_df['price'].max()
+            
+            
+            
+
             
         for groupkey, groupdf in book_df.groupby('time_id'):
             rowid = get_row_id(main_stock_id, groupkey)
@@ -124,10 +136,9 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
                 feature_map[rowid] = {}
                 
 #             feature_map[rowid]['book_realized_volatility'] = generate_realized_volatility_df(groupdf)
-            grouped_interval_df = generate_interval_group_features(groupdf[['wap1','wap2','directional_volume1','seconds_in_bucket_xs_groupkey']], 'seconds_in_bucket_xs_groupkey', intervals_count, 
-                                             function={'wap1':'mean','wap2':'mean','directional_volume1':'sum'}, column_fill_map={'directional_volume1':'zero'})
-#             print(grouped_interval_df)
-#             input()
+            grouped_interval_df = generate_interval_group_features(groupdf[['wap1','wap2','wap_1n2', 'directional_volume1', 'directional_volume2', 'price_spread1', 'price_spread2', 'total_volume', 'volume_imbalance','seconds_in_bucket_xs_groupkey']], 'seconds_in_bucket_xs_groupkey', intervals_count, 
+                                             function={'wap1':'mean','wap2':'mean','wap_1n2':'mean', 'directional_volume1':'mean', 'directional_volume2':'mean', 'price_spread1':'mean', 'price_spread2':'mean', 'total_volume':'sum', 'volume_imbalance':'mean'}, column_fill_map={'directional_volume1':'zero','directional_volume2':'zero', 'total_volume':'zero', 'volume_imbalance':'zero'})
+
 #             book_wap1_1s = generate_interval_features(groupdf, 'wap1', 'seconds_in_bucket_1s_groupkey', 600/1)
 #             book_wap2_1s = generate_interval_features(groupdf, 'wap2', 'seconds_in_bucket_1s_groupkey', 600/1)
             
@@ -140,7 +151,21 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             #NOTE: double fillna is important! when whole series is na then 'bfill' won't work
             feature_map[rowid]['logret1_xs'] = np.log(grouped_interval_df['wap1']).diff().fillna(method='bfill').fillna(0).tolist()
             feature_map[rowid]['logret2_xs'] = np.log(grouped_interval_df['wap2']).diff().fillna(method='bfill').fillna(0).tolist()
-            feature_map[rowid]['book_dirvolume_xs'] = grouped_interval_df['directional_volume1'].tolist()
+            feature_map[rowid]['book_directional_volume1_xs'] = grouped_interval_df['directional_volume1'].tolist()
+            feature_map[rowid]['book_directional_volume2_xs'] = grouped_interval_df['directional_volume2'].tolist()
+            feature_map[rowid]['book_price_spread1_xs'] = grouped_interval_df['price_spread1'].tolist()
+            feature_map[rowid]['book_price_spread2_xs'] = grouped_interval_df['price_spread2'].tolist()
+            feature_map[rowid]['book_total_volume_xs'] = grouped_interval_df['total_volume'].tolist()
+            feature_map[rowid]['book_volume_imbalance_xs'] = grouped_interval_df['volume_imbalance'].tolist()
+            
+            feature_map[rowid]['book_price_min'] = grouped_interval_df['wap_1n2'].min()
+            feature_map[rowid]['book_price_mean'] = grouped_interval_df['wap_1n2'].mean()
+            feature_map[rowid]['book_price_max'] = grouped_interval_df['wap_1n2'].max()
+            book_turnover = (grouped_interval_df['total_volume'] - grouped_interval_df['volume_imbalance']) * grouped_interval_df['wap_1n2']
+            #trade turnover per unit of interval
+            feature_map[rowid]['book_money_turnover_mean'] = book_turnover.mean()
+            
+            
             
 
         import gc
