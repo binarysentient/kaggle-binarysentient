@@ -79,8 +79,10 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         book_df['wap_1n2'] = (book_df['wap1'] + book_df['wap2'])/2
         book_df['directional_volume1'] = book_df['ask_size1'] - book_df['bid_size1']
         book_df['directional_volume2'] = book_df['ask_size2'] - book_df['bid_size2']
-        book_df['price_spread1'] = (book_df['ask_price1'] - book_df['bid_price1']) / (book_df['ask_price1'] + book_df['bid_price1'])
-        book_df['price_spread2'] = (book_df['ask_price2'] - book_df['bid_price2']) / (book_df['ask_price2'] + book_df['bid_price2'])
+        book_df['price_spread1'] = (book_df['ask_price1'] - book_df['bid_price1']) / ((book_df['ask_price1'] + book_df['bid_price1'])/2)
+        book_df['price_spread2'] = (book_df['ask_price2'] - book_df['bid_price2']) / ((book_df['ask_price2'] + book_df['bid_price2'])/2)
+        book_df['bid_spread'] = abs(book_df['bid_price1'] - book_df['bid_price2']) / ((book_df['bid_price1'] + book_df['bid_price2'])/2)
+        book_df['ask_spread'] = abs(book_df['ask_price1'] - book_df['ask_price2']) / ((book_df['ask_price1'] + book_df['ask_price2'])/2)
         book_df['total_volume'] = book_df['ask_size1'] + book_df['bid_size1'] + book_df['ask_size2'] + book_df['bid_size2']
         book_df['volume_imbalance'] = abs(book_df['ask_size1'] - book_df['bid_size1'] + book_df['ask_size2'] - book_df['bid_size2'])
 #             book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
@@ -124,6 +126,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             trade_turnover = (grouped_interval_df['size'] * grouped_interval_df['order_count'] * grouped_interval_df['price'])
             #trade turnover per unit of interval
             feature_map[rowid]['trade_money_turnover_mean'] = trade_turnover.mean()
+            feature_map[rowid]['trade_money_turnover_std'] = trade_turnover.std()
 #             feature_map[rowid]['trade_price_max'] = grouped_interval_df['price'].max()
             
             
@@ -136,8 +139,10 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
                 feature_map[rowid] = {}
                 
 #             feature_map[rowid]['book_realized_volatility'] = generate_realized_volatility_df(groupdf)
-            grouped_interval_df = generate_interval_group_features(groupdf[['wap1','wap2','wap_1n2', 'directional_volume1', 'directional_volume2', 'price_spread1', 'price_spread2', 'total_volume', 'volume_imbalance','seconds_in_bucket_xs_groupkey']], 'seconds_in_bucket_xs_groupkey', intervals_count, 
-                                             function={'wap1':'mean','wap2':'mean','wap_1n2':'mean', 'directional_volume1':'mean', 'directional_volume2':'mean', 'price_spread1':'mean', 'price_spread2':'mean', 'total_volume':'sum', 'volume_imbalance':'mean'}, column_fill_map={'directional_volume1':'zero','directional_volume2':'zero', 'total_volume':'zero', 'volume_imbalance':'zero'})
+            grouped_interval_df = generate_interval_group_features(groupdf[['wap1','wap2','wap_1n2', 'directional_volume1', 'directional_volume2', 'price_spread1', 'price_spread2','bid_spread','ask_spread', 'total_volume', 'volume_imbalance','seconds_in_bucket_xs_groupkey']], 'seconds_in_bucket_xs_groupkey', intervals_count, 
+                                             function={'wap1':'mean','wap2':'mean','wap_1n2':'mean', 'directional_volume1':'mean', 'directional_volume2':'mean', 
+                                                       'price_spread1':'mean', 'price_spread2':'mean','bid_spread':'mean','ask_spread':'mean', 'total_volume':'sum', 'volume_imbalance':'mean'},
+                                            column_fill_map={'directional_volume1':'zero','directional_volume2':'zero', 'total_volume':'zero', 'volume_imbalance':'zero'})
 
 #             book_wap1_1s = generate_interval_features(groupdf, 'wap1', 'seconds_in_bucket_1s_groupkey', 600/1)
 #             book_wap2_1s = generate_interval_features(groupdf, 'wap2', 'seconds_in_bucket_1s_groupkey', 600/1)
@@ -155,6 +160,8 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             feature_map[rowid]['book_directional_volume2_xs'] = grouped_interval_df['directional_volume2'].tolist()
             feature_map[rowid]['book_price_spread1_xs'] = grouped_interval_df['price_spread1'].tolist()
             feature_map[rowid]['book_price_spread2_xs'] = grouped_interval_df['price_spread2'].tolist()
+            feature_map[rowid]['book_bid_spread_xs'] = grouped_interval_df['bid_spread'].tolist()
+            feature_map[rowid]['book_ask_spread_xs'] = grouped_interval_df['ask_spread'].tolist()
             feature_map[rowid]['book_total_volume_xs'] = grouped_interval_df['total_volume'].tolist()
             feature_map[rowid]['book_volume_imbalance_xs'] = grouped_interval_df['volume_imbalance'].tolist()
             
@@ -164,6 +171,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             book_turnover = (grouped_interval_df['total_volume'] - grouped_interval_df['volume_imbalance']) * grouped_interval_df['wap_1n2']
             #trade turnover per unit of interval
             feature_map[rowid]['book_money_turnover_mean'] = book_turnover.mean()
+            feature_map[rowid]['book_money_turnover_std'] = book_turnover.std()
             
             
             
