@@ -73,7 +73,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         `mode`: train|test
         `main_stock_id`: the stock id! zlul
         """
-        interval_second = 24
+        interval_second = 1
         intervals_count = 600/interval_second
         
         feature_map = {}
@@ -89,8 +89,10 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
         
         book_df['logret1'] = np.log(book_df['wap1']).diff().fillna(0)
+        book_df['logret1_pow2'] = book_df['logret1']**2
 #         book_df['logret1_cumsum'] = book_df['wap1'].cumsum()
         book_df['logret2'] = np.log(book_df['wap2']).diff().fillna(0)
+        book_df['logret2_pow2'] = book_df['logret2']**2
             
 #         book_df['wap_1n2'] = (book_df['wap1'] + book_df['wap2'])/2
 #         book_df['directional_volume1'] = book_df['ask_size1'] - book_df['bid_size1']
@@ -102,6 +104,8 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         book_df['total_volume'] = book_df['ask_size1'] + book_df['bid_size1'] + book_df['ask_size2'] + book_df['bid_size2']
         book_df['volume_imbalance'] = abs(book_df['ask_size1'] - book_df['bid_size1'] + book_df['ask_size2'] - book_df['bid_size2'])
         
+        
+        
 #         book_df['book_money_turnover_intention1'] = book_df[['ask_size1','bid_size1']].min(axis=1) * book_df['wap1']
 #         book_df['book_money_turnover2'] = (book_df['ask_size1'] + book_df['bid_size1'] - min(book_df['ask_size1'],book_df['bid_size1'])) * book_df['wap1']
     
@@ -111,8 +115,77 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         trade_df['logrett_pow2'] = trade_df['logrett'] ** 2
         trade_df['trade_money_turnover'] = (trade_df['size'] * trade_df['price'])
 #         trade_df['trade_money_turnover_per_order'] = (trade_df['size'] * trade_df['price'] / trade_df['order_count'])
+        merged_df = book_df.merge(trade_df,how='left',on=['time_id','seconds_in_bucket'])
         
-#                 print(book_df)
+        merged_df['trade_book_price_spread'] = abs(merged_df['wap1']-merged_df['price'])/(merged_df['wap1']+merged_df['price'])
+        merged_df['has_trade_data'] = (~merged_df['trade_book_price_spread'].isnull()).astype(int)
+        merged_df = merged_df.fillna(-0.01)
+        for groupkey, groupdf in merged_df.groupby('time_id'):
+            
+            rowid = get_row_id(main_stock_id, groupkey)
+            if rowid not in feature_map:
+                feature_map[rowid] = {}
+            #NOTE we need to standardize sequence length
+            sequence_length = len(groupdf['seconds_in_bucket'].to_numpy())
+#             print('seqlen',sequence_length)
+            
+            
+            feature_map[rowid]['seconds_in_bucket_xs'] = np.concatenate([groupdf['seconds_in_bucket'].to_numpy(),[0]*(600-sequence_length)])
+#             print("lennow:", len(feature_map[rowid]['seconds_in_bucket_xs']))
+#             input()
+            feature_map[rowid]['book_logret1_pow2_xs'] = np.concatenate([groupdf['logret1_pow2'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['book_logret2_pow2_xs'] = np.concatenate([groupdf['logret2_pow2'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['book_price_spread1_xs'] = np.concatenate([groupdf['price_spread1'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['book_bid_spread_xs'] = np.concatenate([groupdf['bid_spread'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['book_ask_spread_xs'] = np.concatenate([groupdf['ask_spread'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['book_total_volume_xs'] = np.concatenate([groupdf['total_volume'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['book_volume_imbalance_xs'] = np.concatenate([groupdf['volume_imbalance'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['has_trade_data_xs'] = np.concatenate([groupdf['has_trade_data'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['trade_volume_xs'] = np.concatenate([groupdf['size'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['trade_order_count_xs'] = np.concatenate([groupdf['order_count'].to_numpy(),[0]*(600-sequence_length)])
+            feature_map[rowid]['trade_book_price_spread_xs'] = np.concatenate([groupdf['trade_book_price_spread'].to_numpy(),[0]*(600-sequence_length)])
+            # transformer mask ignores the True values,and False remains unchanged
+            feature_map[rowid]['sequence_mask_xs'] = [False]*sequence_length + [True]*(600-sequence_length)
+                
+#         print(merged_df)
+#         input()
+
+         
+            
+#         import gc
+        del book_df
+        del trade_df
+#         gc.collect()
+        return feature_map
+    
+
+if __name__ == "__main__":
+    # This code is to test while I work on generating features
+    DATA_DIRECTORY = os.path.join("..","input","optiver-realized-volatility-prediction")
+    if os.path.exists(DATA_DIRECTORY):
+
+        traindf = pd.read_csv(os.path.join(DATA_DIRECTORY,'train.csv'))
+        traindf = traindf[traindf['stock_id']==31]
+        totalfeatures = {}
+        for stock_id in range(125):
+            if stock_id != 31:
+                continue
+            import time
+            stime = time.time()
+            features_dict = get_features_map_for_stock(DATA_DIRECTORY, "train", stock_id)
+            print("Time takeN:",(time.time()-stime))
+            
+            for rowid,features in features_dict.items():
+                print(f"------- {rowid} -------")
+                for k,v in features.items():
+                    print(k)
+                    print(v)
+                    input()
+            
+            
+            
+def old_code1():
+    #                 print(book_df)
         # ACTUAL FEATURES HERE!
         for groupkey, groupdf in trade_df.groupby('time_id'):
             
@@ -217,36 +290,3 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
 #             feature_map[rowid]['book_book_money_turnover_intention1_mean_xs'] = grouped_interval_df['book_money_turnover_intention1_mean'].tolist()
             
  
-         
-            
-#         import gc
-        del book_df
-        del trade_df
-#         gc.collect()
-        return feature_map
-    
-
-if __name__ == "__main__":
-    # This code is to test while I work on generating features
-    DATA_DIRECTORY = os.path.join("..","input","optiver-realized-volatility-prediction")
-    if os.path.exists(DATA_DIRECTORY):
-
-        traindf = pd.read_csv(os.path.join(DATA_DIRECTORY,'train.csv'))
-        traindf = traindf[traindf['stock_id']==31]
-        totalfeatures = {}
-        for stock_id in range(125):
-            if stock_id != 31:
-                continue
-            import time
-            stime = time.time()
-            features_dict = get_features_map_for_stock(DATA_DIRECTORY, "train", stock_id)
-            print("Time takeN:",(time.time()-stime))
-            
-            for rowid,features in features_dict.items():
-                print(f"------- {rowid} -------")
-                for k,v in features.items():
-                    print(k)
-                    print(v)
-                    input()
-            
-            
