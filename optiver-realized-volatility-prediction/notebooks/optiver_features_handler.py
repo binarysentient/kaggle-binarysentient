@@ -74,7 +74,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         `mode`: train|test
         `main_stock_id`: the stock id! zlul
         """
-        interval_second = 1
+        interval_second = 6
         intervals_count = 600//interval_second
         
         feature_map = {}
@@ -82,19 +82,83 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         trade_df = pd.read_parquet(os.path.join(data_directory, f"trade_{mode}.parquet", f"stock_id={main_stock_id}"))
         
         book_df['wap1'] = (book_df['bid_price1'] * book_df['ask_size1'] + book_df['ask_price1'] * book_df['bid_size1'])/(book_df['bid_size1'] + book_df['ask_size1'])
-        book_df['logret1'] = np.log(book_df['wap1']).diff().fillna(0)
+        book_df['logret1'] = np.log(book_df['wap1']).diff()
+        book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
+        book_df['logret2'] = np.log(book_df['wap2']).diff()
+        book_df['logret_bid_price1'] = np.log(book_df['bid_price1']).diff()
+        book_df['logret_ask_price1'] = np.log(book_df['ask_price1']).diff()
+        book_df['logret_bid_price2'] = np.log(book_df['bid_price2']).diff()
+        book_df['logret_ask_price2'] = np.log(book_df['ask_price2']).diff()
+        
         book_df['price_spread1'] = (book_df['ask_price1'] - book_df['bid_price1']) / ((book_df['ask_price1'] + book_df['bid_price1'])/2)
         book_df['bid_spread'] = abs(book_df['bid_price1'] - book_df['bid_price2']) / ((book_df['bid_price1'] + book_df['bid_price2'])/2)
         book_df['ask_spread'] = abs(book_df['ask_price1'] - book_df['ask_price2']) / ((book_df['ask_price1'] + book_df['ask_price2'])/2)
-        book_df['directional_volume1'] = book_df['bid_size1'] - book_df['ask_size1']
-        book_df['directional_volume2'] = book_df['bid_size2'] - book_df['ask_size2']
-        trade_df['trade_money_turnover_per_order'] = (trade_df['size'] * trade_df['price'] / trade_df['order_count'])
+        book_df['directional_volume1'] = (book_df['bid_size1'] - book_df['ask_size1'])
+        book_df['directional_volume2'] = (book_df['bid_size2'] - book_df['ask_size2'])
+        book_df['logret_directional_volume1'] = np.log(book_df['directional_volume1'] - book_df['directional_volume1'].min() + 1).diff()
+        book_df['logret_directional_volume2'] = np.log(book_df['directional_volume2'] - book_df['directional_volume2'].min() + 1).diff()
         
+        book_df['total_volume'] = book_df['ask_size1'] + book_df['bid_size1'] + book_df['ask_size2'] + book_df['bid_size2']
+        book_df['volume_imbalance'] = abs(book_df['ask_size1'] - book_df['bid_size1'] + book_df['ask_size2'] - book_df['bid_size2'])
+        
+        trade_df['trade_money_turnover'] = trade_df['size'] * trade_df['price']
+        trade_df['logret_trade_money_turnover'] = np.log(trade_df['size'] * trade_df['price']).diff()
+        
+#         trade_df['trade_money_turnover_per_order'] = (trade_df['size'] * trade_df['price'] / trade_df['order_count'])
+        trade_df['logret_price'] = np.log(trade_df['price']).diff()
+#         trade_df['trade_tendancy'] = trade_df['logret_price'] * trade_df['size']
         merged_df = book_df.merge(trade_df,how='left',on=['time_id','seconds_in_bucket']).reset_index(drop=False)
+        
+        merged_df['nwap1'] = (merged_df['ask_price1'] + merged_df['bid_price1'])/2
+        merged_df['trade_price_push_on_book'] = (merged_df['price'] - merged_df['nwap1'])/(merged_df['price'] + merged_df['nwap1'])/2
+#         merged_df['trade_volume_on_book'] = (merged_df['size']/(merged_df['bid_size1']+merged_df['ask_size1']+merged_df['bid_size2']+merged_df['ask_size2']))
+        
         del book_df
         del trade_df
-     
-        for groupkey, groupdf in merged_df.groupby('time_id'):
+        
+        overview_aggregations = {
+#         'wap1': ['sum', 'std'],
+#         'wap2': [np.sum, np.std],
+        'logret1': [realized_volatility],
+        'logret2': [realized_volatility],
+        'logret_price': [realized_volatility],
+#         'wap_balance': ['sum', 'max'],
+#         'price_spread1': ['sum', 'max'],
+#         'bid_spread': ['sum', 'max'],
+#         'ask_spread': ['sum', 'max'],
+        'total_volume': ['sum', 'max'],
+        'volume_imbalance': ['sum', 'max'],
+#         "bid_ask_spread": ['sum', 'max'],
+        'size':  ['sum', 'max','min'],
+        'order_count': ['sum', 'max'],
+        'trade_money_turnover': ['sum', 'max','min'],
+        }
+        aggregations = merged_df.groupby('time_id').agg(overview_aggregations).reset_index(drop=False)
+        aggregations = aggregations.fillna(-0.01)
+        aggregations.columns = ['_'.join(col).strip() for col in aggregations.columns.values]
+        for idx, row in aggregations.iterrows():
+            row = row.to_dict()
+#             print(row)
+#             input()
+            time_id = row['time_id_']
+#             print(int(time_id), type(time_id))
+#             input()
+            rowid = get_row_id(main_stock_id, time_id)
+            
+            if rowid not in feature_map:
+                feature_map[rowid] = {}
+            
+            for key, aggs in overview_aggregations.items():
+                for agg in aggs:
+                    if isinstance(agg, types.FunctionType):
+                        agg = agg.__name__
+                    feature_map[rowid][f'{key}_{agg}'] = row[f'{key}_{agg}']
+        del aggregations
+        
+        merged_df['seconds_in_bucket'] = merged_df['seconds_in_bucket'] // interval_second
+        merge_prepared_df = merged_df.groupby(['time_id','seconds_in_bucket']).agg('sum').reset_index(drop=False)
+        del merged_df
+        for groupkey, groupdf in merge_prepared_df.groupby('time_id'):
 
             rowid = get_row_id(main_stock_id, groupkey)
             
@@ -110,8 +174,15 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
             feature_map[rowid]['has_trade_data_xs'] = np.concatenate([groupdf['has_trade_data'].to_numpy(),[0]*(intervals_count-sequence_length)])
             feature_map[rowid]['seconds_in_bucket_xs'] = np.concatenate([groupdf['seconds_in_bucket'].to_numpy(),[0]*(intervals_count-sequence_length)])
 
-            for feature_name in ['logret1','price_spread1','bid_spread','ask_spread','directional_volume1','directional_volume2','trade_money_turnover_per_order']: #'bid_price2','bid_size2','ask_price2','ask_size2'
-                feature_map[rowid][f'{feature_name}_xs'] = np.concatenate([np.nan_to_num(groupdf[feature_name].to_numpy(),nan=-0.01,neginf=-0.01,posinf=-0.01),[0]*(intervals_count-sequence_length)])
+            for feature_name in ['logret1','logret_bid_price1','logret_ask_price1','logret_bid_price2','logret_ask_price2','price_spread1','bid_spread','ask_spread','logret_directional_volume1','logret_directional_volume2','logret_trade_money_turnover','trade_price_push_on_book','logret_price','order_count']: #'bid_price2','bid_size2','ask_price2','ask_size2'
+                nan_replace_val = -0.01
+                if feature_name in ['logret_bid_price1','logret_ask_price1','logret_bid_price2','logret_ask_price2','trade_price_push_on_book','logret_price']:
+                    nan_replace_val = 0.0
+                    
+                feature_map[rowid][f'{feature_name}_xs'] = np.concatenate([
+                                                        np.nan_to_num(groupdf[feature_name].to_numpy(),nan=nan_replace_val,neginf=nan_replace_val,posinf=nan_replace_val),
+                                                        [0]*(intervals_count-sequence_length)
+                                                                          ])
 #                 feature_map[rowid][f'{feature_name}_v_xs'] = np.concatenate([np.nan_to_num(1/(groupdf[feature_name].to_numpy()),nan=-0.01,neginf=-0.01,posinf=-0.01),[0]*(intervals_count-sequence_length)])
 #             groupdf = groupdf.fillna(-0.01) 
             # transformer mask ignores the True values,and False remains unchanged
@@ -120,7 +191,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
 #         input()
      
 #         import gc
-        del merged_df
+        del merge_prepared_df
 #         gc.collect()
         return feature_map
     
