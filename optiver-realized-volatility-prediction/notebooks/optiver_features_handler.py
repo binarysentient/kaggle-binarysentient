@@ -12,61 +12,11 @@ def get_row_id(stock_id, time_id):
         time_id = int(time_id)
     return f"{stock_id:.0f}-{time_id}"
     
-def generate_realized_volatility_df(df):
-    """ expects the `log_return` to be present"""
-    return np.sqrt(np.sum(df['logret1']**2))
 
 def realized_volatility(series):
     return np.sqrt(np.sum(series**2))
 
-def generate_interval_features(source_df, source_key, interval_key, intervals, function='mean'):
-    """`interval_key` needs to be present in book_df"""
-    
-    aggdf = source_df[[interval_key,source_key]].groupby(interval_key)[source_key].agg(function)
-    aggdf = aggdf.interpolate(method='nearest')
-    aggdf = aggdf.reindex([idx for idx in range(0,int(intervals))],method='nearest')
-    
-    features = aggdf.tolist()
-    
-    
-    return features
 
-def generate_interval_group_features(source_df, interval_key, intervals, function={}, column_fill_map={}):
-    """ we assume source_df only has neccessary key which has function map
-    `func`: dictionary of column:function
-    `interval_key`: needs to be present in book_df
-    `colum_fill_map`: interpolate|zero
-    """
-    
-    aggdf = source_df.groupby(interval_key).agg(function)    
-    aggdf = aggdf.reindex([idx for idx in range(0,int(intervals))])
-    for col in aggdf.columns:
-        if col not in column_fill_map:
-            column_fill_map[col] = 'interpolate'
-    
-    for key,val in column_fill_map.items():
-        if val == 'zero' or val == 0:
-            aggdf[key] = aggdf[key].fillna(0)
-        else:
-            aggdf[key] = aggdf[key].interpolate(method='linear', limit_direction='both')
-
-    return aggdf
-
-def generate_interval_features_ohlc(source_df, source_key, interval_key, intervals):
-    """`interval_key` needs to be present in book_df"""
-    
-#     source_df = source_df[source_df[interval_key]<3].copy()
-    aggdf =  source_df[[interval_key,source_key]].groupby(interval_key)[source_key].agg('ohlc')
-    
-    aggdf = aggdf.reindex([idx for idx in range(0,int(intervals))],method='nearest')
-    
-    features = aggdf.stack().copy().tolist()
-    
-    if len(features) != int(intervals)*4:
-        print("ABOMINATION!!!!!!!", source_df)
-    
-    return features
-    
 
 def get_features_map_for_stock(data_directory, mode, main_stock_id):
         """gets the `stock_id-row_id` wise feature map
