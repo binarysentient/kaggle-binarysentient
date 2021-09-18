@@ -35,6 +35,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         book_df['logret1'] = np.log(book_df['wap1']).diff()
         book_df['wap2'] = (book_df['bid_price2'] * book_df['ask_size2'] + book_df['ask_price2'] * book_df['bid_size2'])/(book_df['bid_size2'] + book_df['ask_size2'])
         book_df['logret2'] = np.log(book_df['wap2']).diff()
+        book_df['wap_balance'] = abs(book_df['wap1'] - book_df['wap2'])
         book_df['logret_bid_price1'] = np.log(book_df['bid_price1']).diff()
         book_df['logret_ask_price1'] = np.log(book_df['ask_price1']).diff()
         book_df['logret_bid_price2'] = np.log(book_df['bid_price2']).diff()
@@ -43,6 +44,7 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         book_df['price_spread1'] = (book_df['ask_price1'] - book_df['bid_price1']) / ((book_df['ask_price1'] + book_df['bid_price1'])/2)
         book_df['bid_spread'] = abs(book_df['bid_price1'] - book_df['bid_price2']) / ((book_df['bid_price1'] + book_df['bid_price2'])/2)
         book_df['ask_spread'] = abs(book_df['ask_price1'] - book_df['ask_price2']) / ((book_df['ask_price1'] + book_df['ask_price2'])/2)
+        book_df["bid_ask_spread"] = abs(book_df['bid_spread'] - book_df['ask_spread'])
         book_df['directional_volume1'] = (book_df['bid_size1'] - book_df['ask_size1'])
         book_df['directional_volume2'] = (book_df['bid_size2'] - book_df['ask_size2'])
         book_df['logret_directional_volume1'] = np.log(book_df['directional_volume1'] - book_df['directional_volume1'].min() + 1).diff()
@@ -67,18 +69,18 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
         del trade_df
         
         overview_aggregations = {
-#         'wap1': ['sum', 'std'],
-#         'wap2': [np.sum, np.std],
+        'wap1': ['sum', 'std'],
+        'wap2': ['sum', 'std'],
         'logret1': [realized_volatility],
         'logret2': [realized_volatility],
         'logret_price': [realized_volatility],
-#         'wap_balance': ['sum', 'max'],
-#         'price_spread1': ['sum', 'max'],
-#         'bid_spread': ['sum', 'max'],
-#         'ask_spread': ['sum', 'max'],
+        'wap_balance': ['sum', 'max'],
+        'price_spread1': ['sum', 'max'],
+        'bid_spread': ['sum', 'max'],
+        'ask_spread': ['sum', 'max'],
         'total_volume': ['sum', 'max'],
         'volume_imbalance': ['sum', 'max'],
-#         "bid_ask_spread": ['sum', 'max'],
+        "bid_ask_spread": ['sum', 'max'],
         'size':  ['sum', 'max','min'],
         'order_count': ['sum', 'max'],
         'trade_money_turnover': ['sum', 'max','min'],
@@ -103,6 +105,27 @@ def get_features_map_for_stock(data_directory, mode, main_stock_id):
                     if isinstance(agg, types.FunctionType):
                         agg = agg.__name__
                     feature_map[rowid][f'{key}_{agg}'] = row[f'{key}_{agg}']
+        del aggregations
+        aggregations = merged_df[merged_df['seconds_in_bucket']>=400].groupby('time_id').agg(overview_aggregations).reset_index(drop=False)
+        aggregations = aggregations.fillna(-0.01)
+        aggregations.columns = ['_'.join(col).strip() for col in aggregations.columns.values]
+        for idx, row in aggregations.iterrows():
+            row = row.to_dict()
+#             print(row)
+#             input()
+            time_id = row['time_id_']
+#             print(int(time_id), type(time_id))
+#             input()
+            rowid = get_row_id(main_stock_id, time_id)
+            
+            if rowid not in feature_map:
+                feature_map[rowid] = {}
+            
+            for key, aggs in overview_aggregations.items():
+                for agg in aggs:
+                    if isinstance(agg, types.FunctionType):
+                        agg = agg.__name__
+                    feature_map[rowid][f'{key}_{agg}_400'] = row[f'{key}_{agg}']
         del aggregations
         
         merged_df['seconds_in_bucket'] = merged_df['seconds_in_bucket'] // interval_second
