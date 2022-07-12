@@ -1,16 +1,3 @@
-WHERE_THIS = "local" # local|kaggle
-
-BS_DATASET = "amex-default-prediction-binarysentient"
-if WHERE_THIS == "kaggle":
-    INPUT_PATH = "/kaggle/input/amex-default-prediction/"
-    OUTPUT_PATH = "/kaggle/working/"
-    TEMP_PATH = "/kaggle/temp/"
-elif WHERE_THIS == "local":
-    INPUT_PATH = "input/amex-default-prediction"
-    OUTPUT_PATH = "working"
-    TEMP_PATH = "temp"
-
-    
 # This Python 3 environment comes with many helpful analytics libraries installed
 # It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
 # For example, here's several helpful packages to load
@@ -28,6 +15,18 @@ from lightgbm import LGBMClassifier, log_evaluation
 from sklearn.model_selection import StratifiedKFold
 import plotly.express as pltex
 
+WHERE_THIS = "local" # local|kaggle
+
+BS_DATASET = "amex-default-prediction-binarysentient"
+if WHERE_THIS == "kaggle":
+    INPUT_PATH = "/kaggle/input/amex-default-prediction/"
+    OUTPUT_PATH = "/kaggle/working/"
+    TEMP_PATH = "/kaggle/temp/"
+elif WHERE_THIS == "local":
+    INPUT_PATH = "input/amex-default-prediction"
+    OUTPUT_PATH = "working"
+    TEMP_PATH = "temp"
+BS_PATH = os.path.join(TEMP_PATH,BS_DATASET)
 
 object_features = ['customer_ID']
 datetime_features = ['S_2']
@@ -79,10 +78,10 @@ def load_csv_with_dtype(csv_filepath):
 
 def load_prepare_amex_dataset(file_without_extension, load_only_these_columns=None):
     # check input location
-    parquetfile = os.path.join(INPUT_PATH,BS_DATASET)+os.sep+f"{file_without_extension}.parquet"
+    parquetfile = os.path.join(INPUT_PATH, BS_DATASET, f"{file_without_extension}.parquet")
     if not os.path.isfile(parquetfile):
-        # check temp location
-        parquetfile = os.path.join(TEMP_PATH,BS_DATASET)+os.sep+f"{file_without_extension}.parquet"
+        # check temp location/BS path
+        parquetfile = os.path.join(BS_PATH, f"{file_without_extension}.parquet")
     # if either of above 2 has the file then load df and return
     if os.path.isfile(parquetfile):
         # print("FOUND PARQUET")
@@ -97,7 +96,7 @@ def load_prepare_amex_dataset(file_without_extension, load_only_these_columns=No
     if os.path.isfile(csvfile):
         dtypesmap, datetimecols = already_known_datatypes()
         df = load_csv_with_dtype(csvfile)
-        df.to_parquet(os.path.join(TEMP_PATH,BS_DATASET, f"{file_without_extension}.parquet"))
+        df.to_parquet(os.path.join(BS_PATH, f"{file_without_extension}.parquet"))
         return df
 
 
@@ -118,7 +117,7 @@ def generate_impute_variants(df, feature_name):
             variants_df[f"{feature_name}_global_{theagg}"] = variants_df[feature_name]
             variants_df.loc[nanindex, f"{feature_name}_global_{theagg}"] = global_stats_features_df.loc[theagg]
         
-        impute_numeric_local_aggregations = ['mean','linear_interpolate','nearest_interpolate'] # 'min','max','first',
+        impute_numeric_local_aggregations = ['mean','linear_interpolate','nearest_interpolate','polynomial_interpolate'] # 'min','max','first',
         for theagg in impute_numeric_local_aggregations:
             variants_df[f"{feature_name}_local_{theagg}"] = variants_df[feature_name]
             
@@ -134,14 +133,21 @@ def generate_impute_variants(df, feature_name):
                 # print("INSIDE: ",theagg)
                 if len(notnanindex) == 0:
                     # TODO: figure something out, for now when all none we fill with global mean
+                    # TODO: feature importance based fallback, fallbcak to global max score feature for each feature
                     variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = global_stats_features_df.loc['mean']
                     continue
 
                 if theagg == "linear_interpolate":
-                    interpolated = groupdf[feature_name].interpolate(method='linear', limit=13)
+                    interpolated = groupdf[feature_name].interpolate(method='linear', limit_direction="both", limit=13)
                     interpolated = interpolated.ffill()
                     interpolated = interpolated.bfill()
                     variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = interpolated.loc[nanindex]
+                elif theagg == "polynomial_interpolate":
+                    interpolated = groupdf[feature_name].interpolate(method='polynomial', order=2, limit_direction='both', limit=13)
+                    interpolated = interpolated.ffill()
+                    interpolated = interpolated.bfill()
+                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = interpolated.loc[nanindex]
+                    
                 elif theagg == "nearest_interpolate":
 
                     if len(notnanindex) != 1:
@@ -178,8 +184,154 @@ def the_threadpool_worker(featurename):
     gc.collect()
     return featurename
 
+
+## TODO: FAST AMEX implementation is not accurate; convert the dataframe accurate version to directly work with numpy arrays
+# @yunchonggan's fast metric implementation
+# From https://www.kaggle.com/competitions/amex-default-prediction/discussion/328020
+def fast_amex_metric(y_true: np.array, y_pred: np.array) -> float:
+
+    # count of positives and negatives
+    n_pos = y_true.sum()
+    n_neg = y_true.shape[0] - n_pos
+
+    # sorting by descring prediction values
+    indices = np.argsort(y_pred)[::-1]
+    preds, target = y_pred[indices], y_true[indices]
+
+    # filter the top 4% by cumulative row weights
+    weight = 20.0 - target * 19.0
+    cum_norm_weight = (weight / weight.sum()).cumsum()
+    four_pct_filter = cum_norm_weight <= 0.04
+
+    # default rate captured at 4%
+    d = target[four_pct_filter].sum() / n_pos
+
+    # weighted gini coefficient
+    lorentz = (target / n_pos).cumsum()
+    gini = ((lorentz - cum_norm_weight) * weight).sum()
+
+    # max weighted gini coefficient
+    gini_max = 10 * n_neg * (1 - 19 / (n_pos + 20 * n_neg))
+
+    # normalized weighted gini coefficient
+    g = gini / gini_max
+
+    return 0.5 * (g + d)
+
+# Need Lightgbm supported eval metric
+#Custom eval function expects a callable with following signatures: func(y_true, y_pred), func(y_true, y_pred, weight) or func(y_true, y_pred, weight, group) and returns (eval_name, eval_result, is_higher_better) or list of (eval_name, eval_result, is_higher_better):
+def lgbm_eval_metric_amex(y_true, y_pred):
+    amex_metric = fast_amex_metric(y_true, y_pred)
+    return ('amex', amex_metric, True)
+
+def create_lgbm_model_with_config(random_state=1, n_estimators=1200, importance_type=None, early_stopping_rounds=None):
+    """
+    Creates model with our desired and some default hyper params
+    importance_type: split|gain
+    """
+    if early_stopping_rounds is None:
+        early_stopping_rounds = n_estimators//10
+    return LGBMClassifier(n_estimators=n_estimators,
+                          learning_rate=0.03, reg_lambda=50,
+                          min_child_samples=2400,
+                          num_leaves=95,
+                          colsample_bytree=0.19,early_stopping_rounds=early_stopping_rounds,
+                          max_bins=511, random_state=random_state, importance_type=importance_type)
+
+class VariantScoreTracker:
+    def __init__(self):
+        self.fold_score_track = {}
+
+    def track_score(self, key, score):
+        key = str(key)
+        if key not in self.fold_score_track:
+            self.fold_score_track[key] = []
+        self.fold_score_track[key].append(score)
+
+    def show_score(self, key):
+        key = str(key)
+        # display(HTML(f"<h3>{key} OVERALL SCORE : {np.mean(self.fold_score_track[key])*100:0.3f}</h3>"))
+        print("---------------")
+        print(f"{key} OVERALL SCORE : {np.mean(self.fold_score_track[key])*100:0.3f}")
+
+    def get_score(self, key):
+        return np.mean(self.fold_score_track[key])
+
+    def get_score_all_variants(self, key):
+        """
+        Get scores for all variants of given feature
+        output type:``` [{feature_variant':k, 'score':x}] ```
+        """
+        # return {k:np.mean(self.fold_score_track[key]) for k in [k for k in self.fold_score_track.keys() if key in k]}
+        return [{'feature_variant':k, 'score':np.mean(self.fold_score_track[key])} for k in [k for k in self.fold_score_track.keys() if key in k]]
+    
+def generate_variant_scores(feature_original):
+    score_tracker = VariantScoreTracker()
+    
+    variant_df = load_prepare_amex_dataset(f"train_data_{feature_original}")
+    df_train_last1 = variant_df.groupby('customer_ID').last()
+    df_train_last1 = df_train_last1.reset_index()
+    
+    del variant_df
+    
+    train_label_df = load_prepare_amex_dataset('train_labels')
+    df_train_wt = pd.merge(df_train_last1, train_label_df, how='inner', on = 'customer_ID')#.reset_index()
+    del train_label_df
+    del df_train_last1
+    features_x = [f for f in df_train_wt.columns if f != 'customer_ID' and f != 'target' and f!='S_2']
+    feature_y = 'target'
+    df_x = df_train_wt[features_x]
+    df_y = df_train_wt[feature_y]
+    
+    total_splits = 5
+    kf = StratifiedKFold(n_splits=total_splits, shuffle=True)
+    fold_scores = []
+    
+    # NOT TOO SURE about feature_importances when all features are variants!! it's non decisive
+    for fold, (idx_train, idx_dev) in enumerate(kf.split(df_x, df_y)):
+        print(f"------ FOLD: {fold+1} of {total_splits} -------")
+        train_x, dev_x, train_y, dev_y, model = None, None, None, None, None
+        start_time = datetime.now()
+        
+        for ftx in [[solox] for solox in features_x]:
+            # display(HTML(f"<h2>{ftx}</h2>"))
+            X_tr = df_train_wt.iloc[idx_train][ftx]
+            X_va = df_train_wt.iloc[idx_dev][ftx]
+            y_tr = df_train_wt[feature_y][idx_train].values
+            y_va = df_train_wt[feature_y][idx_dev].values
+            # for importance_type in ['split','gain']:
+            model = create_lgbm_model_with_config(importance_type='gain')
+            model.fit(X_tr, y_tr,
+                          eval_set = [(X_va, y_va)], 
+                          eval_metric=[lgbm_eval_metric_amex],
+                          callbacks=[log_evaluation(100)])
+
+            y_va_pred = model.predict_proba(X_va, raw_score=True)
+            score = fast_amex_metric(y_va, y_va_pred)
+            n_trees = model.best_iteration_
+            if n_trees is None: n_trees = model.n_estimators
+            # print("-------------------------------------")
+            # display(HTML(f"<h3>Fold {fold+1} | {str(datetime.now() - start_time)[-12:-7]} |"
+            #       f" {n_trees:5} trees |"
+            #       f"                Score = {score:.5f} | Features: {ftx}</h3>"))
+            # print("-------------------------------------")
+            
+            score_tracker.track_score(ftx[0], score)
+                
+    for ftx in [solox for solox in features_x]:
+        score_tracker.show_score(ftx)
+        
+    del df_train_wt
+    gc.collect()
+    
+    return score_tracker.get_score_all_variants(feature_original)
+
 # TODO: TRAIN+TEST mega imputation, and learning based imputation
 if __name__ == "__main__":
+    
+    
+    # STAGE 0: Figure out what features are missing and generate feature variants
+    
     populate_dataset = "train_data"
     df_train = load_prepare_amex_dataset(f"{populate_dataset}")
     
@@ -191,11 +343,51 @@ if __name__ == "__main__":
     #lowest missing to highest missing;
     missing_values_features = [x['columnname'] for x in sorted(missing_features_with_count_list, key=lambda x: x['nan_count'], reverse=False)]
     
-    del df_train
-    gc.collect()
-    with Pool(processes=13, initializer=the_threadpool_initializer, initargs=[populate_dataset]) as p:
-        combined_output = p.map(the_threadpool_worker, missing_values_features)
-        print("FINAL DONE:", combined_output)
     
-        
+    # Check howmany have we already seeded!
+    
+    # Stage 0: Generate all feature variants for both test and train!
+    # TODO: make this step skippable if we already have the variants generated
+    # del df_train
+    # gc.collect()
+    # with Pool(processes=13, initializer=the_threadpool_initializer, initargs=[populate_dataset]) as p:
+    #     combined_output = p.map(the_threadpool_worker, missing_values_features)
+    #     print("FINAL DONE:", combined_output)
+    
+    
+    # Stage 1: figure out which variant works best (this includes original with null features); and create empowerment level 1 dataframes
+    
+    # TODO: The LightGBM models to create score per feature variant to see it's impact on Target.; higher the score better the variant.
+    #       We compare/pit all the variants one by one on the Target and store it
+    # TO FORCE STAGE 1
+    FORCE_STAGE_1 = False
+    VARIANT_SCORES_EMP1_FILE_PATH = os.path.join(BS_PATH, f"variant_scores_emp1.parquet")
+    if FORCE_STAGE_1:
+        if os.path.isfile(VARIANT_SCORES_EMP1_FILE_PATH):
+            os.remove(VARIANT_SCORES_EMP1_FILE_PATH)
+    
+    variant_scores_df = load_prepare_amex_dataset(f"variant_scores_emp1")
+    done_features = []
+    if variant_scores_df is not None:
+        # columns: feature_variant, score
+        done_features = variant_scores_df['feature_variant'].tolist()
+        print("donefeatrure", done_features)
+    for missing_value_feature in missing_values_features:
+        if missing_value_feature in done_features:
+            print("SKIPPING ", missing_value_feature)
+            continue
+        scores = generate_variant_scores(missing_value_feature)
+        newdf = pd.DataFrame(scores)
+        if variant_scores_df is None:
+            newdf.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
+        else:
+            variant_scores_df = pd.concat([variant_scores_df, newdf])
+            variant_scores_df.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
+            done_features = variant_scores_df['feature_variant'].tolist()
+        print(scores)
+    # TODO: once we have the scores for all variant ready; Choose the best variants and create the {train|test}_data_emp1.parquet dataset
+    
+    
+    
+    # Stage 2: use that emp1 as base and now train the models to predict the missing values; Combine train
 
