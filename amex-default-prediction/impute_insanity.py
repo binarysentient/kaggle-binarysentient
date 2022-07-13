@@ -102,26 +102,29 @@ def load_prepare_amex_dataset(file_without_extension, load_only_these_columns=No
 
 def generate_impute_variants(df, feature_name):
     
+    
     dtype = df[feature_name].dtype.name
-    print("IMPUTING: ", feature_name, " type", dtype)
+    
     if "float" in dtype:
         # print("Feature datatype ", )
+        print("-->", stage0_dataset, "IMPUTING: ", feature_name, " type", dtype)
         impute_numeric_global_aggregations = ['mean','min','max','median']
+        print(stage0_dataset, " imputing: ", "global variants for", feature_name ,  " type", dtype, "variants:", impute_numeric_global_aggregations)
         global_stats_features_df = df[feature_name].agg(impute_numeric_global_aggregations)
-        
         variants_df = df[['customer_ID',feature_name]].copy()
-        
-        print("COMPUTING GLOBAL IMPUTATIONS")
         nanindex = variants_df[variants_df[feature_name].isna()].index
-        for theagg in impute_numeric_global_aggregations:
-            variants_df[f"{feature_name}_global_{theagg}"] = variants_df[feature_name]
-            variants_df.loc[nanindex, f"{feature_name}_global_{theagg}"] = global_stats_features_df.loc[theagg]
         
-        impute_numeric_local_aggregations = ['mean','linear_interpolate','nearest_interpolate','polynomial_interpolate'] # 'min','max','first',
+        for theagg in impute_numeric_global_aggregations:
+            variant_key = f"{feature_name}_global_{theagg}"
+            variants_df[variant_key] = variants_df[feature_name]
+            variants_df.loc[nanindex, variant_key] = global_stats_features_df.loc[theagg]
+        
+        impute_numeric_local_aggregations = ['mean','linear_interpolate','nearest_interpolate'] #,'polynomial_interpolate'] # 'min','max','first',
+        print(stage0_dataset, " imputing: ", "local variants for", feature_name, " type", dtype, "variants:", impute_numeric_local_aggregations)
         for theagg in impute_numeric_local_aggregations:
             variants_df[f"{feature_name}_local_{theagg}"] = variants_df[feature_name]
             
-        print("COMPUTING GROUPED IMPUTATIONS")
+        
         for groupk, groupdf in variants_df[['customer_ID']+[feature_name]].groupby("customer_ID"):
             nanindex = groupdf[groupdf[feature_name].isna()].index
             notnanindex = groupdf[groupdf[feature_name].notnull()].index
@@ -130,23 +133,26 @@ def generate_impute_variants(df, feature_name):
                 continue
 
             for theagg in impute_numeric_local_aggregations:
+                variant_key = f"{feature_name}_local_{theagg}"
+                
                 # print("INSIDE: ",theagg)
                 if len(notnanindex) == 0:
                     # TODO: figure something out, for now when all none we fill with global mean
                     # TODO: feature importance based fallback, fallbcak to global max score feature for each feature
-                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = global_stats_features_df.loc['mean']
+                    variants_df.loc[nanindex, variant_key] = global_stats_features_df.loc['mean']
                     continue
 
                 if theagg == "linear_interpolate":
                     interpolated = groupdf[feature_name].interpolate(method='linear', limit_direction="both", limit=13)
                     interpolated = interpolated.ffill()
                     interpolated = interpolated.bfill()
-                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = interpolated.loc[nanindex]
+                    variants_df.loc[nanindex, variant_key] = interpolated.loc[nanindex]
                 elif theagg == "polynomial_interpolate":
+                    # TODO: bugfix:  The number of derivatives at boundaries does not matc
                     interpolated = groupdf[feature_name].interpolate(method='polynomial', order=2, limit_direction='both', limit=13)
                     interpolated = interpolated.ffill()
                     interpolated = interpolated.bfill()
-                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = interpolated.loc[nanindex]
+                    variants_df.loc[nanindex, variant_key] = interpolated.loc[nanindex]
                     
                 elif theagg == "nearest_interpolate":
 
@@ -156,29 +162,39 @@ def generate_impute_variants(df, feature_name):
                         interpolated = groupdf[feature_name]
                     interpolated = interpolated.ffill()
                     interpolated = interpolated.bfill()
-                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = interpolated.loc[nanindex]
+                    variants_df.loc[nanindex, variant_key] = interpolated.loc[nanindex]
                 elif theagg == "first":
-                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = groupdf[feature_name].iloc[0]
+                    variants_df.loc[nanindex, variant_key] = groupdf[feature_name].iloc[0]
                 else:
-                    variants_df.loc[nanindex, f"{feature_name}_local_{theagg}"] = groupdf[feature_name].agg(theagg)
-        
+                    variants_df.loc[nanindex, variant_key] = groupdf[feature_name].agg(theagg)
+        print("-->", stage0_dataset, "DONE imputing: ", feature_name, " type", dtype)
         return variants_df
 
-current_dataset = None
-def the_threadpool_initializer(dataset):
-    global current_dataset 
-    current_dataset = dataset
-    print("---------> INITIALIZER:", current_dataset)
-    current_dataset = dataset
+stage0_dataset = None
+stage0_force_stage0 = False
+def the_stage0_initializer(dataset, force_stage0):
+    global stage0_dataset 
+    global stage0_force_stage0
+    stage0_dataset = dataset
+    stage0_force_stage0 = force_stage0
     
-def the_threadpool_worker(featurename):
-    global current_dataset
-    the_df = load_prepare_amex_dataset(f"{current_dataset}",load_only_these_columns=['customer_ID',featurename])
+def the_stage0_worker(featurename):
+    global stage0_dataset
+    global stage0_force_stage0
+    print("====>> Working FOR ", featurename)
+    variant_df = load_prepare_amex_dataset(f"{stage0_dataset}_{featurename}")
+    if not stage0_force_stage0 and variant_df is not None:
+        print("---> SKIPPING STAGE0 for :", stage0_dataset, featurename)
+        return featurename
+    
+    the_df = load_prepare_amex_dataset(f"{stage0_dataset}",load_only_these_columns=['customer_ID',featurename])
+    
+    
     
     variant_df = generate_impute_variants(the_df, featurename)
     if variant_df is not None:
-        print("---> FINISHED FOR ", featurename)
-        variant_df.to_parquet(os.path.join(TEMP_PATH,BS_DATASET, f"{current_dataset}_{featurename}.parquet"))
+        print("====>> FINISHED FOR ", featurename)
+        variant_df.to_parquet(os.path.join(TEMP_PATH,BS_DATASET, f"{stage0_dataset}_{featurename}.parquet"))
     del the_df
     del variant_df
     gc.collect()
@@ -234,7 +250,7 @@ def create_lgbm_model_with_config(random_state=1, n_estimators=1200, importance_
     return LGBMClassifier(n_estimators=n_estimators,
                           learning_rate=0.03, reg_lambda=50,
                           min_child_samples=2400,
-                          num_leaves=95,
+                          num_leaves=95, num_threads=12,
                           colsample_bytree=0.19,early_stopping_rounds=early_stopping_rounds,
                           max_bins=511, random_state=random_state, importance_type=importance_type)
 
@@ -263,12 +279,14 @@ class VariantScoreTracker:
         output type:``` [{feature_variant':k, 'score':x}] ```
         """
         # return {k:np.mean(self.fold_score_track[key]) for k in [k for k in self.fold_score_track.keys() if key in k]}
-        return [{'feature_variant':k, 'score':np.mean(self.fold_score_track[key])} for k in [k for k in self.fold_score_track.keys() if key in k]]
+        return [{'feature_variant':matchvariantk, 'score':np.mean(self.fold_score_track[matchvariantk])} for matchvariantk in [variantk for variantk in self.fold_score_track.keys() if key in variantk]]
     
 def generate_variant_scores(feature_original):
     score_tracker = VariantScoreTracker()
     
     variant_df = load_prepare_amex_dataset(f"train_data_{feature_original}")
+    if variant_df is None:
+        return None
     df_train_last1 = variant_df.groupby('customer_ID').last()
     df_train_last1 = df_train_last1.reset_index()
     
@@ -317,7 +335,7 @@ def generate_variant_scores(feature_original):
             # print("-------------------------------------")
             
             score_tracker.track_score(ftx[0], score)
-                
+           
     for ftx in [solox for solox in features_x]:
         score_tracker.show_score(ftx)
         
@@ -328,31 +346,31 @@ def generate_variant_scores(feature_original):
 
 # TODO: TRAIN+TEST mega imputation, and learning based imputation
 if __name__ == "__main__":
-    
-    
+    print(f"------ STARTED IMPUTE INSANITY --------------")
     # STAGE 0: Figure out what features are missing and generate feature variants
-    
-    populate_dataset = "train_data"
-    df_train = load_prepare_amex_dataset(f"{populate_dataset}")
-    
-    missing_counts_df = df_train.isna().sum().reset_index()
-    missing_counts_df = missing_counts_df.rename({'index':'columnname', 0:'nan_count'}, axis=1)
-    missing_features_with_count_list = [x for x in missing_counts_df.to_dict('records') if x['columnname'].startswith('') and x['nan_count']>0]
-    features_missing_values_count_map = {x['columnname']:x['nan_count'] for x in missing_counts_df.to_dict('records')}
-    
-    #lowest missing to highest missing;
-    missing_values_features = [x['columnname'] for x in sorted(missing_features_with_count_list, key=lambda x: x['nan_count'], reverse=False)]
-    
-    
-    # Check howmany have we already seeded!
-    
-    # Stage 0: Generate all feature variants for both test and train!
-    # TODO: make this step skippable if we already have the variants generated
-    # del df_train
-    # gc.collect()
-    # with Pool(processes=13, initializer=the_threadpool_initializer, initargs=[populate_dataset]) as p:
-    #     combined_output = p.map(the_threadpool_worker, missing_values_features)
-    #     print("FINAL DONE:", combined_output)
+    for dataset_name in ['test_data','train_data']:
+        print(f"---- STAGE 0: {dataset_name} ---------")
+        # we cache the nan mask; we'll need it later at emp2 stage and NeuralNetwork stage to see which ones we imputed but in reality was nan
+        df_nan_mask = load_prepare_amex_dataset(f"{dataset_name}_nan_mask")
+        if df_nan_mask is None:
+            df_dataset = load_prepare_amex_dataset(f"{dataset_name}")
+            df_nan_mask = df_dataset.isna()
+            df_nan_mask.to_parquet(os.path.join(BS_PATH,f"{dataset_name}_nan_mask.parquet"), index=False)
+            del df_dataset
+            gc.collect()
+            
+        missing_counts_df = df_nan_mask.sum().reset_index().rename({'index':'columnname', 0:'nan_count'}, axis=1)
+        missing_values_features = [x['columnname'] for x in missing_counts_df.to_dict('records') if x['nan_count']>0]
+
+        # Stage 0: Generate all feature variants for both test and train!
+        # TODO: make this step skippable if we already have the variants generated
+        # del df_train
+        # gc.collect()
+        FORCE_STAGE_0 = False
+        #TODO: configure init_stage0 and stage0 worker
+        with Pool(processes=12, initializer=the_stage0_initializer, initargs=[dataset_name, FORCE_STAGE_0]) as p:
+            combined_output = p.map(the_stage0_worker, missing_values_features)
+            print("FINAL DONE:", combined_output)
     
     
     # Stage 1: figure out which variant works best (this includes original with null features); and create empowerment level 1 dataframes
@@ -360,6 +378,7 @@ if __name__ == "__main__":
     # TODO: The LightGBM models to create score per feature variant to see it's impact on Target.; higher the score better the variant.
     #       We compare/pit all the variants one by one on the Target and store it
     # TO FORCE STAGE 1
+    # FIGURE OUT VARIANT SCORES
     FORCE_STAGE_1 = False
     VARIANT_SCORES_EMP1_FILE_PATH = os.path.join(BS_PATH, f"variant_scores_emp1.parquet")
     if FORCE_STAGE_1:
@@ -377,16 +396,53 @@ if __name__ == "__main__":
             print("SKIPPING ", missing_value_feature)
             continue
         scores = generate_variant_scores(missing_value_feature)
+        if scores is None:
+            continue
+            
         newdf = pd.DataFrame(scores)
         if variant_scores_df is None:
             newdf.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
+            variant_scores_df = newdf
         else:
-            variant_scores_df = pd.concat([variant_scores_df, newdf])
+            variant_scores_df = pd.concat([variant_scores_df, newdf], ignore_index=True)
             variant_scores_df.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
             done_features = variant_scores_df['feature_variant'].tolist()
         print(scores)
     # TODO: once we have the scores for all variant ready; Choose the best variants and create the {train|test}_data_emp1.parquet dataset
     
+    
+    df_train = load_prepare_amex_dataset(f"train_data")
+    # SELECT BEST VARIANT SCORES AND CREATE EMP1 dataframe
+    for feature in df_train.columns:
+        # print("--------")
+        # print(feature)
+        matching_variants = None
+        best_variant = None
+        variant_df = None
+
+        if feature in object_features+datetime_features+target_features:
+            continue
+        #figure out the best score
+        matching_variants = variant_scores[variant_scores['feature_variant'].str.contains(feature)]
+        if matching_variants is None or len(matching_variants)==0:
+            continue
+        # B_1 and B_19 might get matched!!
+
+        matching_variants = sorted(matching_variants.to_dict('records'), key=lambda x:x['score'], reverse=True)
+        matching_variants = [x for x in matching_variants if f'{feature}_' in x['feature_variant'] or feature==x['feature_variant']]
+        if len(matching_variants) == 0:
+            continue
+
+        best_variant = matching_variants[0]['feature_variant']
+
+        variant_df = load_prepare_amex_dataset(f"train_data_{feature}")
+        if feature == best_variant:
+            # we already have it
+            continue
+        print("FOUND VARIANT:",best_variant)
+        print(variant_df.columns)
+        df_train[feature] = variant_df[best_variant]
+
     
     
     # Stage 2: use that emp1 as base and now train the models to predict the missing values; Combine train
