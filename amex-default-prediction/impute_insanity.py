@@ -29,10 +29,11 @@ elif WHERE_THIS == "local":
 BS_PATH = os.path.join(TEMP_PATH,BS_DATASET)
 
 object_features = ['customer_ID']
+discard_features = ['D_66']
 datetime_features = ['S_2']
-cat_features = ['B_30', 'B_38', 'D_114', 'D_116', 'D_117', 'D_120', 'D_126', 'D_63', 'D_64', 'D_66', 'D_68']
+cat_features = ['B_30', 'B_38', 'D_114', 'D_116', 'D_117', 'D_120', 'D_126', 'D_63', 'D_64', 'D_68']
 target_features = ['target']
-numeric_features = ['R_2', 'S_25', 'D_118', 'B_5', 'D_60', 'B_21', 'D_115', 'S_15', 'D_84', 'D_122', 'B_9', 'B_33', 'D_53', 'R_24', 'D_94', 'D_56', 'D_139', 'R_28', 'B_3', 'S_20', 'B_31', 'D_133', 'B_2', 'S_12', 'D_71', 'D_96', 'S_7', 'D_72', 'B_36', 'B_41', 'S_5', 'D_41', 'R_22', 'R_8', 'D_140', 'D_47', 'D_89', 'P_2', 'R_19', 'D_59', 'B_23', 'S_3', 'D_145', 'D_103', 'B_19', 'R_20', 'D_73', 'D_136', 'D_141', 'D_142', 'B_22', 'D_46', 'B_29', 'B_25', 'D_128', 'B_18', 'D_86', 'D_109', 'B_8', 'B_17', 'R_17', 'B_12', 'D_54', 'D_74', 'S_16', 'B_6', 'D_49', 'D_80', 'S_8', 'B_7', 'D_144', 'B_27', 'B_26', 'R_25', 'R_23', 'D_82', 'D_111', 'B_10', 'D_113', 'R_4', 'D_48', 'R_26', 'S_23', 'B_11', 'D_104', 'D_134', 'D_79', 'P_3', 'D_132', 'D_137', 'D_135', 'B_28', 'D_88', 'S_13', 'D_51', 'D_61', 'D_75', 'D_69', 'R_16', 'S_6', 'S_17', 'D_93', 'B_20', 'D_112', 'D_123', 'D_130', 'B_1', 'D_78', 'D_92', 'S_27', 'D_44', 'B_16', 'R_5', 'D_43', 'S_18', 'B_15', 'D_39', 'D_50', 'D_55', 'S_9', 'D_105', 'D_70', 'R_18', 'D_125', 'D_58', 'S_24', 'D_110', 'D_42', 'R_6', 'D_81', 'R_7', 'D_138', 'D_52', 'R_27', 'D_124', 'D_45', 'D_91', 'D_108', 'S_22', 'B_14', 'D_83', 'R_13', 'D_87', 'S_19', 'D_131', 'R_21', 'B_40', 'R_3', 'D_65', 'B_13', 'D_129', 'D_119', 'B_32', 'R_9', 'B_24', 'D_127', 'D_106', 'D_102', 'R_1', 'R_14', 'B_37', 'D_107', 'R_15', 'R_12', 'P_4', 'R_10', 'customer_ID', 'D_121', 'R_11', 'S_11', 'D_76', 'D_143', 'B_39', 'B_42', 'D_62', 'B_4', 'S_26', 'D_77']
+numeric_features = ['R_2', 'S_25', 'D_118', 'B_5', 'D_60', 'B_21', 'D_115', 'S_15', 'D_84', 'D_122', 'B_9', 'B_33', 'D_53', 'R_24', 'D_94', 'D_56', 'D_139', 'R_28', 'B_3', 'S_20', 'B_31', 'D_133', 'B_2', 'S_12', 'D_71', 'D_96', 'S_7', 'D_72', 'B_36', 'B_41', 'S_5', 'D_41', 'R_22', 'R_8', 'D_140', 'D_47', 'D_89', 'P_2', 'R_19', 'D_59', 'B_23', 'S_3', 'D_145', 'D_103', 'B_19', 'R_20', 'D_73', 'D_136', 'D_141', 'D_142', 'B_22', 'D_46', 'B_29', 'B_25', 'D_128', 'B_18', 'D_86', 'D_109', 'B_8', 'B_17', 'R_17', 'B_12', 'D_54', 'D_74', 'S_16', 'B_6', 'D_49', 'D_80', 'S_8', 'B_7', 'D_144', 'B_27', 'B_26', 'R_25', 'R_23', 'D_82', 'D_111', 'B_10', 'D_113', 'R_4', 'D_48', 'R_26', 'S_23', 'B_11', 'D_104', 'D_134', 'D_79', 'P_3', 'D_132', 'D_137', 'D_135', 'B_28', 'D_88', 'S_13', 'D_51', 'D_61', 'D_75', 'D_69', 'R_16', 'S_6', 'S_17', 'D_93', 'B_20', 'D_112', 'D_123', 'D_130', 'B_1', 'D_78', 'D_92', 'S_27', 'D_44', 'B_16', 'R_5', 'D_43', 'S_18', 'B_15', 'D_39', 'D_50', 'D_55', 'S_9', 'D_105', 'D_70', 'R_18', 'D_125', 'D_58', 'S_24', 'D_110', 'D_42', 'R_6', 'D_81', 'R_7', 'D_138', 'D_52', 'R_27', 'D_124', 'D_45', 'D_91', 'D_108', 'S_22', 'B_14', 'D_83', 'R_13', 'D_87', 'S_19', 'D_131', 'R_21', 'B_40', 'R_3', 'D_65', 'B_13', 'D_129', 'D_119', 'B_32', 'R_9', 'B_24', 'D_127', 'D_106', 'D_102', 'R_1', 'R_14', 'B_37', 'D_107', 'R_15', 'R_12', 'P_4', 'R_10', 'D_121', 'R_11', 'S_11', 'D_76', 'D_143', 'B_39', 'B_42', 'D_62', 'B_4', 'S_26', 'D_77']
     
 def figureout_data_types_from_csv(csv_filepath):
     df_iterator = pd.read_csv(csv_filepath, chunksize=100, low_memory=True)
@@ -62,18 +63,24 @@ def figureout_data_types_from_csv(csv_filepath):
     
     return column_dtypes_map, [x for x in all_columns if x in datetime_features]
 
-def already_known_datatypes():
-    dtypesmap = {}
-    for fet in numeric_features:
-        dtypesmap[fet] = 'float32'
-    for fet in cat_features:
-        dtypesmap[fet] = 'category'
-    datetimefeatures = datetime_features
-    return dtypesmap, datetimefeatures
             
 def load_csv_with_dtype(csv_filepath):
     dtypemap,datetimecolumns = figureout_data_types_from_csv(csv_filepath)
-    return pd.read_csv(csv_filepath, low_memory=True, dtype=dtypemap, parse_dates=datetimecolumns)
+    df = pd.read_csv(csv_filepath, low_memory=True, dtype=dtypemap, parse_dates=datetimecolumns)
+    # D_66 is useless ; only 1.0 & NaN in test data while 0.0(6.2k only) 1.0:617k, nan: 4808k in training..
+    # D_68: discard 0 value as it's missing from test, make label 0 into NaN, and in training 0.0: 15k, 1.0:133k, NaN: 216k, gradually increases to max 6.0: 2782k
+    # D_64: discard -1 and make it into NaN, test data don't have -1, train: -1: 37k, NaN: 217k, R: 840k, U:1523k, O:2913k
+    for discardfet in discard_features:
+        if discardfet in df:
+            del df[discardfet]
+    if 'D_68' in df:
+        if '0.0' in df['D_68'].cat.categories.tolist():
+            df['D_68'] = df['D_68'].cat.remove_categories('0.0')
+    if 'D_64' in df:
+        if '-1' in df['D_64'].cat.categories.tolist():
+            df['D_64'] = df['D_64'].cat.remove_categories('-1')
+    return df
+    
 
 
 def load_prepare_amex_dataset(file_without_extension, load_only_these_columns=None):
@@ -94,7 +101,6 @@ def load_prepare_amex_dataset(file_without_extension, load_only_these_columns=No
     # print("CREATING CSV")
     csvfile = os.path.join(INPUT_PATH, f"{file_without_extension}.csv")
     if os.path.isfile(csvfile):
-        dtypesmap, datetimecols = already_known_datatypes()
         df = load_csv_with_dtype(csvfile)
         df.to_parquet(os.path.join(BS_PATH, f"{file_without_extension}.parquet"))
         return df
@@ -344,6 +350,7 @@ class VariantScoreTracker:
         return [{'feature_variant':matchvariantk, 'score':np.mean(self.fold_score_track[matchvariantk])} for matchvariantk in [variantk for variantk in self.fold_score_track.keys() if key in variantk]]
     
 def generate_variant_scores(feature_original):
+    print("Generating Variant Scores: ", feature_original)
     score_tracker = VariantScoreTracker()
     
     variant_df = load_prepare_amex_dataset(f"train_data_{feature_original}")
@@ -406,11 +413,52 @@ def generate_variant_scores(feature_original):
     
     return score_tracker.get_score_all_variants(feature_original)
 
+def generate_dataset_from_best_variants(dataset_name, variant_scores_parquet_file, variant_feature_parquet_file_pattern, force_only_variant=False):
+    """
+    force_only_variant: don't keep original feature which might have nan; only select notnan variants; Keep this True for neural network dataset output
+    """
+    print("Generating Dataset From Variants")
+    print("Loading", variant_scores_parquet_file)  
+    variant_scores_df = load_prepare_amex_dataset(variant_scores_parquet_file)
+    variant_scores_df = variant_scores_df.sort_values(['score','feature_variant'], ascending=False)
+    
+    print("Loading", dataset_name)  
+    df_dataset = load_prepare_amex_dataset(f"{dataset_name}")
+    print("begin.. Generating Dataset From Variants")
+    # SELECT BEST VARIANT SCORES AND CREATE EMP1 dataframe
+    for feature in df_dataset.columns:
+        # print("--------")
+        # print(feature)
+        variant_df, matching_variants, best_variant = None, None, None
+        
+        if force_only_variant:
+            matching_variants = variant_scores_df[variant_scores_df['feature_variant'].str.contains(f"{feature}_")]
+        else:
+            matching_variants = variant_scores_df[variant_scores_df['feature_variant'].str.contains(f"{feature}_") | (variant_scores_df['feature_variant']==feature)]
+        
+        if matching_variants is None or len(matching_variants)==0:
+            continue
+
+        best_variant = matching_variants.iloc[0]['feature_variant']
+        if feature == best_variant:
+            continue
+
+        variant_df = load_prepare_amex_dataset(eval(variant_feature_parquet_file_pattern))#f"{dataset_name}_{feature}")
+        if variant_df is None:
+            # we don' have variants; scores are generaeted from train data and test data might not have missing values for same columns
+            continue
+        print(dataset_name, "FOUND VARIANT:",best_variant)
+        print(variant_df.columns)
+        df_dataset[feature] = variant_df[best_variant]
+    
+    return df_dataset
+    
+
 # TODO: TRAIN+TEST mega imputation, and learning based imputation
 if __name__ == "__main__":
     print(f"------ STARTED IMPUTE INSANITY --------------")
     # STAGE 0: Figure out what features are missing and generate feature variants
-    for dataset_name in []:#['train_data','test_data']
+    for dataset_name in []:#['train_data','test_data']:
         print(f"---- STAGE 0: {dataset_name} ---------")
         # we cache the nan mask; we'll need it later at emp2 stage and NeuralNetwork stage to see which ones we imputed but in reality was nan
         df_nan_mask = load_prepare_amex_dataset(f"{dataset_name}_nan_mask")
@@ -423,13 +471,9 @@ if __name__ == "__main__":
             
         missing_counts_df = df_nan_mask.sum().reset_index().rename({'index':'columnname', 0:'nan_count'}, axis=1)
         missing_values_features = [x['columnname'] for x in missing_counts_df.to_dict('records') if x['nan_count']>0]
-
         # Stage 0: Generate all feature variants for both test and train!
-        # TODO: make this step skippable if we already have the variants generated
-        # del df_train
-        # gc.collect()
+        
         FORCE_STAGE_0 = False
-        #TODO: configure init_stage0 and stage0 worker
         with Pool(processes=12, initializer=the_stage0_initializer, initargs=[dataset_name, FORCE_STAGE_0]) as p:
             combined_output = p.map(the_stage0_worker, missing_values_features)
             print("FINAL DONE:", combined_output)
@@ -452,7 +496,10 @@ if __name__ == "__main__":
             os.remove(VARIANT_SCORES_EMP1_FILE_PATH)
     
     
+    # figure out variant scores, make this resumable
     variant_scores_df = load_prepare_amex_dataset(f"variant_scores_emp1")
+    if variant_scores_df is None:
+        variant_scores_df = pd.DataFrame({'feature_variant':pd.Series([],dtype='object'), 'score':pd.Series([],dtype='float32')})
     done_features = []
     if variant_scores_df is not None:
         # columns: feature_variant, score
@@ -467,58 +514,37 @@ if __name__ == "__main__":
             continue
             
         newdf = pd.DataFrame(scores)
-        if variant_scores_df is None:
-            newdf.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
-            variant_scores_df = newdf
-        else:
-            variant_scores_df = pd.concat([variant_scores_df, newdf], ignore_index=True)
-            variant_scores_df.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
-            done_features = variant_scores_df['feature_variant'].tolist()
+        # if variant_scores_df is None:
+        #     newdf.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
+        #     variant_scores_df = newdf
+        # else:
+        variant_scores_df = pd.concat([variant_scores_df, newdf], ignore_index=True)
+        variant_scores_df.to_parquet(VARIANT_SCORES_EMP1_FILE_PATH, index=False)
+        done_features = variant_scores_df['feature_variant'].tolist()
         print(scores)
+    
+    del variant_scores_df
+    gc.collect()
     # TODO: once we have the scores for all variant ready; Choose the best variants and create the {train|test}_data_emp1.parquet dataset
     
     
-    variant_scores_df = variant_scores_df.sort_values(['score','feature_variant'], ascending=False)
-    for dataset_name in ['test_data','train_data']:
-
-        df_dataset = load_prepare_amex_dataset(f"{dataset_name}")
-
-        # SELECT BEST VARIANT SCORES AND CREATE EMP1 dataframe
-        for feature in df_dataset.columns:
-            # print("--------")
-            # print(feature)
-            matching_variants = None
-            best_variant = None
-            variant_df = None
-
-            if feature in object_features+datetime_features+target_features:
-                continue
-            #figure out the best score
-            
-            matching_variants = variant_scores_df[variant_scores_df['feature_variant'].str.contains(f"{feature}_") | (variant_scores_df['feature_variant']==feature)]
-            if matching_variants is None or len(matching_variants)==0:
-                continue
-            # B_1 and B_19 might get matched!!
-
-            
-            if len(matching_variants) == 0:
-                continue
-
-            best_variant = matching_variants.iloc[0]['feature_variant']
-            if feature == best_variant:
-                # we already have it
-                continue
-                
-            variant_df = load_prepare_amex_dataset(f"{dataset_name}_{feature}")
-            if variant_df is None:
-                # we don' have variants; scores are generaeted from train data and test data might not have missing values for same columns
-                continue
-            print("FOUND VARIANT:",best_variant)
-            print(variant_df.columns)
-            df_dataset[feature] = variant_df[best_variant]
-        
-        df_dataset.to_parquet(os.path.join(BS_PATH, f"{dataset_name}_emp1.parquet"), index=False)
+    # Scores are ready; seelct best version of it and select NN version of it
+    
+    for dataset_name in ['train_data','test_data']:
+        for output_type in ['nn','lgbm']:
+            force_only_variant = True if output_type == 'nn' else False
+            df_dataset = generate_dataset_from_best_variants(dataset_name, 'variant_scores_emp1', 'f"{dataset_name}_{feature}"', force_only_variant=force_only_variant)
+            outputfile_name = f"{dataset_name}_emp1.parquet"
+            if force_only_variant:
+                outputfile_name = f"{dataset_name}_emp1_nn.parquet"
+            df_dataset.to_parquet(os.path.join(BS_PATH, outputfile_name), index=False)
+            del df_dataset
+            gc.collect()
     
     
     # Stage 2: use that emp1 as base and now train the models to predict the missing values; Combine train
-
+    # what have we so far; 
+    # emp1 version of dataframe which is made from selecting best variants
+    #      we know which variant is best from looking at variant_scores_emp1
+    # we need to make variant score 
+    
