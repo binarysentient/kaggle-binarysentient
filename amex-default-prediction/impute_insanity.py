@@ -33,7 +33,7 @@ discard_features = ['D_66']
 datetime_features = ['S_2']
 cat_features = ['B_30', 'B_38', 'D_114', 'D_116', 'D_117', 'D_120', 'D_126', 'D_63', 'D_64', 'D_68']
 target_features = ['target']
-numeric_features = ['R_2', 'S_25', 'D_118', 'B_5', 'D_60', 'B_21', 'D_115', 'S_15', 'D_84', 'D_122', 'B_9', 'B_33', 'D_53', 'R_24', 'D_94', 'D_56', 'D_139', 'R_28', 'B_3', 'S_20', 'B_31', 'D_133', 'B_2', 'S_12', 'D_71', 'D_96', 'S_7', 'D_72', 'B_36', 'B_41', 'S_5', 'D_41', 'R_22', 'R_8', 'D_140', 'D_47', 'D_89', 'P_2', 'R_19', 'D_59', 'B_23', 'S_3', 'D_145', 'D_103', 'B_19', 'R_20', 'D_73', 'D_136', 'D_141', 'D_142', 'B_22', 'D_46', 'B_29', 'B_25', 'D_128', 'B_18', 'D_86', 'D_109', 'B_8', 'B_17', 'R_17', 'B_12', 'D_54', 'D_74', 'S_16', 'B_6', 'D_49', 'D_80', 'S_8', 'B_7', 'D_144', 'B_27', 'B_26', 'R_25', 'R_23', 'D_82', 'D_111', 'B_10', 'D_113', 'R_4', 'D_48', 'R_26', 'S_23', 'B_11', 'D_104', 'D_134', 'D_79', 'P_3', 'D_132', 'D_137', 'D_135', 'B_28', 'D_88', 'S_13', 'D_51', 'D_61', 'D_75', 'D_69', 'R_16', 'S_6', 'S_17', 'D_93', 'B_20', 'D_112', 'D_123', 'D_130', 'B_1', 'D_78', 'D_92', 'S_27', 'D_44', 'B_16', 'R_5', 'D_43', 'S_18', 'B_15', 'D_39', 'D_50', 'D_55', 'S_9', 'D_105', 'D_70', 'R_18', 'D_125', 'D_58', 'S_24', 'D_110', 'D_42', 'R_6', 'D_81', 'R_7', 'D_138', 'D_52', 'R_27', 'D_124', 'D_45', 'D_91', 'D_108', 'S_22', 'B_14', 'D_83', 'R_13', 'D_87', 'S_19', 'D_131', 'R_21', 'B_40', 'R_3', 'D_65', 'B_13', 'D_129', 'D_119', 'B_32', 'R_9', 'B_24', 'D_127', 'D_106', 'D_102', 'R_1', 'R_14', 'B_37', 'D_107', 'R_15', 'R_12', 'P_4', 'R_10', 'D_121', 'R_11', 'S_11', 'D_76', 'D_143', 'B_39', 'B_42', 'D_62', 'B_4', 'S_26', 'D_77']
+numeric_features = ['R_2', 'S_25', 'D_118', 'B_5', 'D_60', 'B_21', 'D_115', 'S_15', 'D_84', 'D_122', 'B_9', 'B_33', 'D_53', 'R_24', 'D_94', 'D_56', 'D_139', 'R_28', 'B_3', 'S_20', 'B_31', 'D_133', 'B_2', 'S_12', 'D_71', 'D_96', 'S_7', 'D_72', 'B_36', 'B_41', 'S_5', 'D_41', 'R_22', 'R_8', 'D_140', 'D_47', 'D_89', 'P_2', 'R_19', 'D_59', 'B_23', 'S_3', 'D_145', 'D_103', 'B_19', 'R_20', 'D_73', 'D_136', 'D_141', 'D_142', 'B_22', 'D_46', 'B_29', 'B_25', 'D_128', 'B_18', 'D_86', 'D_109', 'B_8', 'B_17', 'R_17', 'B_12', 'D_54', 'D_74', 'S_16', 'B_6', 'D_49', 'D_80', 'S_8', 'B_7', 'D_144', 'B_27', 'B_26', 'R_25', 'R_23', 'D_82', 'D_111', 'B_10', 'D_113', 'R_4', 'D_48', 'R_26', 'S_23', 'B_11', 'D_104', 'D_134', 'D_79', 'P_3', 'D_132', 'D_137', 'D_135', 'B_28', 'D_88', 'S_13', 'D_51', 'D_61', 'D_75', 'D_69', 'R_16', 'S_6', 'S_17', 'D_93', 'B_20', 'D_112', 'D_123', 'D_130', 'B_1', 'D_78', 'D_92', 'S_27', 'D_44', 'B_16', 'R_5', 'D_43', 'S_18', 'B_15', 'D_39', 'D_50', 'D_55', 'S_9', 'D_105', 'D_70', 'R_18', 'D_125', 'D_58', 'S_24', 'D_110', 'D_42', 'R_6', 'D_81', 'R_7', 'D_138', 'D_52', 'R_27', 'D_124', 'D_45', 'D_91', 'D_108', 'S_22', 'B_14', 'D_83', 'R_13', 'D_87', 'S_19', 'D_131', 'R_21', 'B_40', 'R_3', 'D_65', 'B_13', 'D_129', 'D_119', 'B_32', 'R_9', 'B_24', 'D_127', 'D_106', 'D_102', 'R_1', 'R_14', 'B_37', 'D_107', 'R_15', 'R_12', 'P_4', 'R_10','D_121', 'R_11', 'S_11', 'D_76', 'D_143', 'B_39', 'B_42', 'D_62', 'B_4', 'S_26', 'D_77']
     
 def figureout_data_types_from_csv(csv_filepath):
     df_iterator = pd.read_csv(csv_filepath, chunksize=100, low_memory=True)
@@ -89,6 +89,9 @@ def load_prepare_amex_dataset(file_without_extension, load_only_these_columns=No
     if not os.path.isfile(parquetfile):
         # check temp location/BS path
         parquetfile = os.path.join(BS_PATH, f"{file_without_extension}.parquet")
+    if not os.path.isfile(parquetfile):
+        # check temp location/BS path
+        parquetfile = os.path.join("../input",BS_DATASET, f"{file_without_extension}.parquet")
     # if either of above 2 has the file then load df and return
     if os.path.isfile(parquetfile):
         # print("FOUND PARQUET")
@@ -163,13 +166,8 @@ def generate_impute_variants(df, feature_name):
                     variants_df.loc[nanindex, variant_key] = groupdf[feature_name].value_counts().index[0]
                 elif theagg == "least_frequent":
                     variants_df.loc[nanindex, variant_key] = groupdf[feature_name].value_counts().index[-1]
-                elif theagg == "nearest_interpolate":
-                    if len(notnanindex) != 1:
-                        interpolated = groupdf[feature_name].interpolate(method='nearest',limit_direction='both', limit=13)
-                    else:
-                        interpolated = groupdf[feature_name]
-                    interpolated = interpolated.ffill()
-                    interpolated = interpolated.bfill()
+                else:
+                    interpolated = groupdf[feature_name].ffill().bfill()
                     variants_df.loc[nanindex, variant_key] = interpolated.loc[nanindex]
         return variants_df
         
@@ -358,10 +356,11 @@ def generate_variant_scores(feature_original):
         return None
     df_train_last1 = variant_df.groupby('customer_ID').last()
     df_train_last1 = df_train_last1.reset_index()
-    
+    print(feature_original, "loaded variant df")
     del variant_df
     
     train_label_df = load_prepare_amex_dataset('train_labels')
+    print(feature_original, "loaded train labels")
     df_train_wt = pd.merge(df_train_last1, train_label_df, how='inner', on = 'customer_ID')#.reset_index()
     del train_label_df
     del df_train_last1
@@ -369,11 +368,11 @@ def generate_variant_scores(feature_original):
     feature_y = 'target'
     df_x = df_train_wt[features_x]
     df_y = df_train_wt[feature_y]
-    
+    print(feature_original, "geenrated train test split")
     total_splits = 5
     kf = StratifiedKFold(n_splits=total_splits, shuffle=True)
     fold_scores = []
-    
+    print(feature_original, "creating folds..")
     # NOT TOO SURE about feature_importances when all features are variants!! it's non decisive
     for fold, (idx_train, idx_dev) in enumerate(kf.split(df_x, df_y)):
         print(f"------ FOLD: {fold+1} of {total_splits} -------")
@@ -458,18 +457,19 @@ def generate_dataset_from_best_variants(dataset_name, variant_scores_parquet_fil
 if __name__ == "__main__":
     print(f"------ STARTED IMPUTE INSANITY --------------")
     # STAGE 0: Figure out what features are missing and generate feature variants
-    for dataset_name in []:#['train_data','test_data']:
+    for dataset_name in ['train_data','test_data']:
         print(f"---- STAGE 0: {dataset_name} ---------")
         # we cache the nan mask; we'll need it later at emp2 stage and NeuralNetwork stage to see which ones we imputed but in reality was nan
         df_nan_mask = load_prepare_amex_dataset(f"{dataset_name}_nan_mask")
         if df_nan_mask is None:
             df_dataset = load_prepare_amex_dataset(f"{dataset_name}")
             df_nan_mask = df_dataset.isna()
+            df_nan_mask['customer_ID'] = df_dataset['customer_ID']
             df_nan_mask.to_parquet(os.path.join(BS_PATH,f"{dataset_name}_nan_mask.parquet"), index=False)
             del df_dataset
             gc.collect()
             
-        missing_counts_df = df_nan_mask.sum().reset_index().rename({'index':'columnname', 0:'nan_count'}, axis=1)
+        missing_counts_df = df_nan_mask.loc[:,df_nan_mask.columns!="customer_ID"].sum().reset_index().rename({'index':'columnname', 0:'nan_count'}, axis=1)
         missing_values_features = [x['columnname'] for x in missing_counts_df.to_dict('records') if x['nan_count']>0]
         # Stage 0: Generate all feature variants for both test and train!
         
@@ -477,7 +477,6 @@ if __name__ == "__main__":
         with Pool(processes=12, initializer=the_stage0_initializer, initargs=[dataset_name, FORCE_STAGE_0]) as p:
             combined_output = p.map(the_stage0_worker, missing_values_features)
             print("FINAL DONE:", combined_output)
-    
     
     # Stage 1: figure out which variant works best (this includes original with null features); and create empowerment level 1 dataframes
     
